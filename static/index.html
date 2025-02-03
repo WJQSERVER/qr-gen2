@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>二维码生成器</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #ffffff;
+      --text-color: #212529;
+      --input-bg: #ffffff;
+      --input-border: #ced4da;
+      --qr-bg: #ffffff;
+      --qr-shadow: rgba(0, 0, 0, 0.1);
+    }
+
+    [data-bs-theme="dark"] {
+      --bg-color: #1a1a1a;
+      --text-color: #f8f9fa;
+      --input-bg: #2d2d2d;
+      --input-border: #4d4d4d;
+      --qr-bg: #2d2d2d;
+      --qr-shadow: rgba(255, 255, 255, 0.1);
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    .container {
+      flex: 1;
+    }
+
+    .form-control {
+      background-color: var(--input-bg);
+      border-color: var(--input-border);
+      color: var(--text-color);
+      transition: all 0.3s ease;
+    }
+
+    .form-control:focus {
+      background-color: var(--input-bg);
+      border-color: var(--input-border);
+      box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+      color: var(--text-color);
+    }
+
+    .theme-switcher {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      cursor: pointer;
+      padding: 10px 15px;
+      border-radius: 30px;
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      transition: all 0.3s ease;
+    }
+
+    .theme-switcher:hover {
+      transform: rotate(15deg);
+    }
+
+    #qr-result img {
+      background: var(--qr-bg);
+      padding: 15px;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px var(--qr-shadow);
+      margin: 20px auto;
+      transition: all 0.3s ease;
+    }
+
+    footer {
+      text-align: center;
+      padding: 20px;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      border-top: 1px solid var(--input-border);
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding-top: 60px;
+      }
+      .theme-switcher {
+        top: 10px;
+        right: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container mt-5">
+    <div class="theme-switcher" onclick="toggleTheme()" title="切换主题">
+      🌓
+    </div>
+    
+    <h1 class="text-center mb-4">二维码生成器</h1>
+    
+    <form id="qrForm" class="mt-4">
+      <div class="mb-3">
+        <label for="url" class="form-label">URL</label>
+        <input type="url" class="form-control" id="url" name="url" 
+               placeholder="https://example.com" required
+               pattern="https?://.+">
+      </div>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label for="level" class="form-label">容错等级</label>
+          <select class="form-select" id="level" name="level">
+            <option value="L">低 (L)</option>
+            <option value="M" selected>中 (M)</option>
+            <option value="Q">高 (Q)</option>
+            <option value="H">最高 (H)</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label for="size" class="form-label">尺寸 (像素)</label>
+          <input type="number" class="form-control" id="size" 
+                 name="size" value="256" min="128" max="1024">
+        </div>
+      </div>
+      <div class="row g-3 mt-2">
+        <div class="col-md-6">
+          <label for="color" class="form-label">前景色</label>
+          <input type="color" class="form-control form-control-color" id="color" 
+                 name="color" value="#000000" title="选择二维码颜色">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary w-100 mt-4">
+        <i class="bi bi-qr-code me-2"></i>生成二维码
+      </button>
+    </form>
+
+    <div id="qr-result" class="mt-4 text-center"></div>
+  </div>
+
+  <footer>
+    <p>Copyright &copy; WJQSERVER 2025</p>
+  </footer>
+
+  <script>
+    // 主题管理
+    function toggleTheme() {
+      const html = document.documentElement;
+      const newTheme = html.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-bs-theme', newTheme);
+      localStorage.setItem('qrTheme', newTheme);
+    }
+
+    function initTheme() {
+      const savedTheme = localStorage.getItem('qrTheme') || 
+        (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-bs-theme', savedTheme);
+    }
+
+    // 二维码生成
+    document.getElementById('qrForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const params = new URLSearchParams({
+        url: btoa(document.getElementById('url').value),
+        level: document.getElementById('level').value,
+        size: document.getElementById('size').value,
+        color: document.getElementById('color').value.replace('#', ''),
+      });
+
+      const qrResult = document.getElementById('qr-result');
+      qrResult.innerHTML = `
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">加载中...</span>
+        </div>
+      `;
+
+      try {
+        const img = new Image();
+        img.src = `/api/generate?${params}`;
+        img.className = 'img-fluid';
+        img.alt = '生成的二维码';
+        
+        img.onload = () => {
+          qrResult.innerHTML = '';
+          qrResult.appendChild(img);
+        };
+        
+        img.onerror = () => {
+          throw new Error('二维码生成失败');
+        };
+      } catch (error) {
+        qrResult.innerHTML = `
+          <div class="alert alert-danger mt-3">
+            ${error.message}
+          </div>
+        `;
+      }
+    });
+
+    // 初始化
+    document.addEventListener('DOMContentLoaded', () => {
+      initTheme();
+      document.getElementById('url').focus();
+    });
+  </script>
+</body>
+</html>
